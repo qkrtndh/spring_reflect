@@ -4,20 +4,27 @@ import com.cos.reflect.anno.RequestMapping;
 
 public class UserController {
 	
-	@RequestMapping
-	public void join() {
+	@RequestMapping("/join")
+	public String join() {
 		System.out.println("join함수 호출");
+		return "/";
 	}
 
-	public void login() {
+	@RequestMapping("/login")
+	public String login() {
 		System.out.println("login함수 호출");
+		return "/";
 	}
 
-	public void user() {
+	@RequestMapping("/user")
+	public String user() {
 		System.out.println("user함수 호출");
+		return "/";
 	}
 	
-	public void hello() {
+	@RequestMapping("/hello")
+	public String hello() {
 		System.out.println("hello함수 호출");
+		return "/";
 	}
 }

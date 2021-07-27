@@ -1,9 +1,12 @@
 package com.cos.reflect.filter;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.util.Enumeration;
 
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
@@ -19,6 +22,7 @@ import com.cos.reflect.controller.UserController;
 
 //분기시키기
 public class Dispatcher implements Filter {
+	private boolean isRMatching = false;
 
 	@Override
 	public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)
@@ -53,11 +57,22 @@ public class Dispatcher implements Filter {
 		for (Method method : methods) {// 4바퀴 join,login,user,hello
 			Annotation annotation = method.getDeclaredAnnotation(RequestMapping.class);
 			RequestMapping requestMapping = (RequestMapping) annotation;
-			System.out.println(requestMapping.value());
+
 			if (requestMapping.value().equals(endPoint)) {
+				isRMatching = true;
 				try {
-					String path = (String)method.invoke(userController);
-					RequestDispatcher dis = request.getRequestDispatcher(path);
+					Parameter[] params = method.getParameters();
+					String path = null;
+					if (params.length != 0) {
+						Object dtoInstance = params[0].getType().newInstance();
+						// key값을 번형해서 처리 username => setUsername
+						setData(dtoInstance, request);
+						path = (String) method.invoke(userController, dtoInstance);
+					} else {
+						path = (String) method.invoke(userController);
+					}
+
+					RequestDispatcher dis = request.getRequestDispatcher(path);// 필터를 다시 안탄다.
 					dis.forward(request, response);
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -65,6 +80,30 @@ public class Dispatcher implements Filter {
 				break;
 			}
 		}
+		if (isRMatching == false) {
+				response.setContentType("text/html; charset=utf-8");
+				PrintWriter out = response.getWriter();
+				out.println("잘못된 주소");
+				out.flush();
+		}
 	}
 
+	private <T> void setData(T instance, HttpServletRequest request) {
+		Enumeration<String> keys = request.getParameterNames();// username,password
+		while (keys.hasMoreElements()) {
+			String key = (String) keys.nextElement();
+			String methodKey = "set" + key.substring(0, 1).toUpperCase() + key.substring(1);
+
+			Method[] methods = instance.getClass().getDeclaredMethods();
+			for (Method method : methods) {
+				if (method.getName().equals(methodKey)) {
+					try {
+						method.invoke(instance, request.getParameter(key));
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		}
+	}
 }
